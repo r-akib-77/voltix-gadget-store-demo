@@ -3,7 +3,8 @@
 import { Menu, Search, ShoppingBag, X, Zap } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCart, useWishlist } from "@/hooks/use-cart";
 import { SearchBar, NAV_LINKS, type NavLink } from "@/components/layout/SearchBar";
 import { cn } from "@/lib/cn-utils";
@@ -16,7 +17,7 @@ export function Header() {
   const [activeQuery, setActiveQuery] = useState("");
   const cart = useCart();
   const wishlist = useWishlist();
-  const menuPanelRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
 
   /* Track the current querystring client-side so nav links can highlight
      category destinations without pulling useSearchParams (keeps the header SSR-able). */
@@ -37,7 +38,7 @@ export function Header() {
       if (event.key === "Escape") setMenuOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
-    menuPanelRef.current?.focus();
+    document.getElementById("mobile-menu-panel")?.focus();
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -181,79 +182,127 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile search panel */}
-        {searchOpen && (
-          <div className="border-t border-neutral-200 bg-white px-4 py-3 md:hidden">
-            <SearchBar autoFocus />
-          </div>
-        )}
+        {/* Mobile search panel — smooth expand/collapse */}
+        <AnimatePresence initial={false}>
+          {searchOpen && (
+            <motion.div
+              initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              animate={reduceMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+              className="overflow-hidden border-t border-neutral-200 bg-white md:hidden"
+            >
+              <div className="px-4 py-3">
+                <SearchBar autoFocus />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      {/* Mobile navigation overlay */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
-          <div
-            className="absolute inset-0 bg-zinc-950/40"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <nav
-            ref={menuPanelRef}
-            tabIndex={-1}
-            aria-label="Mobile navigation"
-            role="dialog"
-            aria-modal="true"
-            className="absolute inset-y-0 left-0 w-[86vw] max-w-xs overflow-y-auto bg-white p-6 shadow-lift outline-none"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-display text-lg font-bold tracking-tight text-zinc-950">
-                Menu
-              </span>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
-                className="icon-btn"
+      {/* Mobile navigation overlay — animated slide-in from the left */}
+      <AnimatePresence>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              className="absolute inset-0 bg-zinc-950/40"
+              onClick={() => setMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.nav
+              id="mobile-menu-panel"
+              tabIndex={-1}
+              aria-label="Mobile navigation"
+              role="dialog"
+              aria-modal="true"
+              initial={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+              animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+              transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
+              className="absolute inset-y-0 left-0 w-[86vw] max-w-xs overflow-y-auto bg-white p-6 shadow-lift outline-none"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-display text-lg font-bold tracking-tight text-zinc-950">
+                  Menu
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Close menu"
+                  className="icon-btn"
+                >
+                  <X aria-hidden="true" className="size-5" />
+                </button>
+              </div>
+              <motion.ul
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: {},
+                  show: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } },
+                }}
+                className="mt-6 space-y-1"
               >
-                <X aria-hidden="true" className="size-5" />
-              </button>
-            </div>
-            <ul className="mt-6 space-y-1">
-              {NAV_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      "block rounded-xl px-3 py-2.5 text-base font-medium transition-colors hover:bg-neutral-100",
-                      isActive(link) ? "bg-accent-50 text-accent-700" : "text-zinc-800"
-                    )}
+                {NAV_LINKS.map((link) => (
+                  <motion.li
+                    key={link.href}
+                    variants={{
+                      hidden: reduceMotion ? { opacity: 0 } : { opacity: 0, x: -12 },
+                      show: reduceMotion
+                        ? { opacity: 1, transition: { duration: 0 } }
+                        : {
+                            opacity: 1,
+                            x: 0,
+                            transition: { duration: 0.18, ease: "easeOut" },
+                          },
+                    }}
                   >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Categories
-            </p>
-            <ul className="mt-2 grid grid-cols-2 gap-1">
-              {MOBILE_CATEGORIES.map(([slug, label]) => (
-                <li key={slug}>
-                  <Link
-                    href={`/shop?category=${slug}`}
-                    className="block rounded-lg px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-neutral-100 hover:text-zinc-950"
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <Link href="/cart" className="btn btn-outline mt-8 w-full">
-              View cart
-            </Link>
-          </nav>
-        </div>
-      )}
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        "block rounded-xl px-3 py-2.5 text-base font-medium transition-colors hover:bg-neutral-100",
+                        isActive(link) ? "bg-accent-50 text-accent-700" : "text-zinc-800"
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </motion.li>
+                ))}
+              </motion.ul>
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1, transition: { duration: reduceMotion ? 0 : 0.2 } },
+                }}
+                className="mt-6"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Categories
+                </p>
+                <ul className="mt-2 grid grid-cols-2 gap-1">
+                  {MOBILE_CATEGORIES.map(([slug, label]) => (
+                    <li key={slug}>
+                      <Link
+                        href={`/shop?category=${slug}`}
+                        className="block rounded-lg px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-neutral-100 hover:text-zinc-950"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/cart" className="btn btn-outline mt-8 w-full">
+                  View cart
+                </Link>
+              </motion.div>
+            </motion.nav>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
