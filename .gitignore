@@ -26,6 +26,9 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# Pages deploy JWT (short-lived credential file)
+scripts/.pages-jwt
+
 # next-env.d.ts is auto-generated
 /next-env.d.ts
 

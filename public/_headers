@@ -1,0 +1,6 @@
+# Cache static Next.js bundles aggressively; HTML stays revalidated.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
